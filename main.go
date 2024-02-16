@@ -35,3 +35,18 @@ type Empty struct{}
 type Status struct {
 	RequestBytes map[string]int64
 }
+
+
+
+type RpcServer struct{}
+
+func (r *RpcServer) GetStatus(args *Empty, reply *Status) error {
+	requestLock.Lock()
+	defer requestLock.Unlock()
+
+	reply.RequestBytes = make(map[string]int64)
+	for k, v := range requestBytes {
+		reply.RequestBytes[k] = v
+	}
+	return nil
+}
