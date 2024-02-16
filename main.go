@@ -50,3 +50,29 @@ func (r *RpcServer) GetStatus(args *Empty, reply *Status) error {
 	}
 	return nil
 }
+
+
+func getBackend() (*Backend, error) {
+	select {
+	case be := <-backendQueue:
+		return be, nil
+	case <-time.After(100 * time.Millisecond):
+		be, err := net.Dial("tcp", "127.0.0.1:8079")
+		if err != nil {
+			return nil, err
+		}
+		return &Backend{
+			Conn:   be,
+			Reader: bufio.NewReader(be),
+			Writer: bufio.NewWriter(be),
+		}, nil
+	}
+}
+
+func queueBackend(be *Backend) {
+	select {
+	case backendQueue <- be:
+	default:
+		be.Close()
+	}
+}
