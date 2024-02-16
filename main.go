@@ -129,3 +129,39 @@ func handleConnection(conn net.Conn) {
 		go queueBackend(be)
 	}
 }
+
+
+
+func main() {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Hello from the backend server!")
+	})
+
+	log.Fatal(http.ListenAndServe(":8079", nil))
+	rpc.Register(&RpcServer{})
+	rpc.HandleHTTP()
+
+	go func() {
+		l, err := net.Listen("tcp", ":8079")
+		if err != nil {
+			log.Fatalf("Failed to listen: %s", err)
+		}
+
+		err = http.Serve(l, nil)
+		if err != nil {
+			log.Fatalf("Failed to serve HTTP: %s", err)
+		}
+	}()
+
+	ln, err := net.Listen("tcp", ":8070")
+	if err != nil {
+		log.Fatalf("Failed to listen: %s", err)
+	}
+
+	for {
+		conn, err := ln.Accept()
+		if err == nil {
+			go handleConnection(conn)
+		}
+	}
+}
