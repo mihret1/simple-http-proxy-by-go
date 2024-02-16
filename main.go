@@ -88,3 +88,44 @@ func updateStats(req *http.Request, resp *http.Response) int64 {
 
 	return bytes
 }
+
+
+func handleConnection(conn net.Conn) {
+	defer conn.Close()
+	reader := bufio.NewReader(conn)
+
+	for {
+		req, err := http.ReadRequest(reader)
+		if err != nil {
+			if err != io.EOF {
+				log.Printf("Failed to read request: %s", err)
+			}
+			return
+		}
+
+		be, err := getBackend()
+		if err != nil {
+			log.Printf("Failed to get backend: %s", err)
+			return
+		}
+
+		if err := req.Write(be.Writer); err == nil {
+			be.Writer.Flush()
+		}
+
+		resp, err := http.ReadResponse(be.Reader, req)
+		if err != nil {
+			log.Printf("Failed to read response: %s", err)
+			return
+		}
+
+		bytes := updateStats(req, resp)
+		resp.Header.Set("X-Bytes", strconv.FormatInt(bytes, 10))
+
+		if err := resp.Write(conn); err != nil {
+			log.Printf("Failed to write response: %s", err)
+		}
+
+		go queueBackend(be)
+	}
+}
