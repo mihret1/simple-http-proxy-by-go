@@ -22,3 +22,16 @@ func init() {
 	requestBytes = make(map[string]int64)
 	backendQueue = make(chan *Backend, 10)
 }
+
+
+
+type Backend struct {
+	net.Conn
+	Reader *bufio.Reader
+	Writer *bufio.Writer
+}
+
+type Empty struct{}
+type Status struct {
+	RequestBytes map[string]int64
+}
